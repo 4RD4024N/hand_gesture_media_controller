@@ -1,0 +1,10 @@
+opencv-python
+mediapipe
+numpy
+pyautogui
+SpeechRecognition
+spotipy
+pycaw
+comtypes
+python-dotenv
+pyaudio
