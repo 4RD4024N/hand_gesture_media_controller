@@ -119,29 +119,42 @@ def media_play_pause():
     time.sleep(0.1)
 
 def listen_and_play_spotify():
-    if sp is None:
-        print("⚠️ Spotify not configured")
-        return
-    
     recognizer = sr.Recognizer()
-    with sr.Microphone() as source:
-        print("🎤 Listening... Say the song name (5 seconds):")
-        try:
+    
+    print("🎤 Listening... Say the song name (5 seconds):")
+    
+    try:
+        with sr.Microphone() as source:
+            recognizer.adjust_for_ambient_noise(source, duration=0.5)
             audio = recognizer.listen(source, timeout=5, phrase_time_limit=5)
-        except sr.WaitTimeoutError:
-            print("⏱️ Timeout")
-            return
+    except sr.WaitTimeoutError:
+        print("⏱️ Timeout - no sound detected")
+        return
+    except Exception as e:
+        print(f"⚠️ Microphone error: {e}")
+        return
 
     try:
+        # Recognize speech (Turkish language)
         song = recognizer.recognize_google(audio, language="tr-TR")
-        print(f"🎶 Detected song: {song}")
-        results = sp.search(q=song, limit=1, type='track')
-        if results['tracks']['items']:
-            uri = results['tracks']['items'][0]['uri']
-            sp.start_playback(uris=[uri])
-            print(f"🎧 Playing: {song}")
-        else:
-            print("❌ Song not found.")
+        print(f"🎶 Detected: {song}")
+        
+        # Use AppleScript to search and play in Spotify (no API needed)
+        search_query = song.replace('"', '\\"')  # Escape quotes
+        applescript = f'''
+        tell application "Spotify"
+            activate
+            play track "spotify:search:{search_query}"
+        end tell
+        '''
+        
+        subprocess.run(["osascript", "-e", applescript])
+        print(f"� Searching Spotify for: {song}")
+            
+    except sr.UnknownValueError:
+        print("🧏 Could not understand audio")
+    except sr.RequestError as e:
+        print(f"🌐 Speech recognition error: {e}")
     except Exception as e:
         print(f"⚠️ Error: {e}")
 
