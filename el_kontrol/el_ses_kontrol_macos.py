@@ -24,6 +24,7 @@ cell_h = cam_h // rows
 icon_size = (80, 80)  # Larger icons for visibility
 is_muted = False
 previous_volume = 50
+voice_language_mode = "tr-TR"  # Default to Turkish, can switch to "en-US"
 
 icon_path = os.path.join(os.path.dirname(__file__), "icons")
 model_path = os.path.join(os.path.dirname(__file__), "hand_landmarker.task")
@@ -119,9 +120,11 @@ def media_play_pause():
     time.sleep(0.1)
 
 def listen_and_play_spotify():
+    global voice_language_mode
     recognizer = sr.Recognizer()
     
-    print("🎤 Listening... Say the song name (5 seconds):")
+    mode_name = "Turkish" if voice_language_mode == "tr-TR" else "English"
+    print(f"🎤 Listening ({mode_name} mode)... Say song name (5 seconds):")
     
     try:
         with sr.Microphone() as source:
@@ -135,9 +138,19 @@ def listen_and_play_spotify():
         return
 
     try:
-        # Recognize speech (Turkish language)
-        song = recognizer.recognize_google(audio, language="tr-TR")
-        print(f"🎶 Detected: {song}")
+        
+        # Recognize song in current language mode
+        song = None
+        try:
+            song = recognizer.recognize_google(audio, language=voice_language_mode)
+            lang_flag = "🇹🇷" if voice_language_mode == "tr-TR" else "🇺🇸"
+            print(f"🎶 Detected {lang_flag}: {song}")
+        except sr.UnknownValueError:
+            print(f"🧏 Could not understand audio in {mode_name}")
+            return
+        
+        if not song:
+            return
         
         # Use AppleScript to search and play in Spotify (no API needed)
         search_query = song.replace('"', '\\"')  # Escape quotes
@@ -149,7 +162,7 @@ def listen_and_play_spotify():
         '''
         
         subprocess.run(["osascript", "-e", applescript])
-        print(f"� Searching Spotify for: {song}")
+        print(f"🎧 Searching Spotify for: {song}")
             
     except sr.UnknownValueError:
         print("🧏 Could not understand audio")
@@ -219,7 +232,7 @@ GRID_ACTIONS = {
     (1, 2): ("next", "next", "Next"),
     (2, 0): ("prev2", "prev", "2x Back"),  # Go back 2 songs
     (2, 1): ("mute", "volumeon", "Mute"),
-    (2, 2): None,  # Empty cell
+    (2, 2): ("lang_toggle", "playpause", "TR/EN"),  # Language toggle
 }
 
 def execute_action(action_name):
@@ -260,6 +273,14 @@ def execute_action(action_name):
             print("🔇 Muted")
         else:
             print("🔊 Unmuted")
+    elif action_name == "lang_toggle":
+        global voice_language_mode
+        if voice_language_mode == "tr-TR":
+            voice_language_mode = "en-US"
+            print("🇺🇸 Switched to English mode")
+        else:
+            voice_language_mode = "tr-TR"
+            print("🇹🇷 Switched to Turkish mode")
     return True
 
 def is_palm_open(fingers):
