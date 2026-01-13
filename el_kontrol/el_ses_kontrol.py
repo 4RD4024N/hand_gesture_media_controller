@@ -23,6 +23,7 @@ import mediapipe as mp
 cam_w, cam_h = 1280, 720
 is_muted = False
 previous_volume = -20.0
+current_language = "tr-TR"
 
 icon_path = os.path.join(os.path.dirname(__file__), "icons")
 icon_size = (70, 70)
@@ -30,16 +31,17 @@ icon_size = (70, 70)
 center_x, center_y = cam_w // 2, cam_h // 2
 
 button_y = 150
-button_spacing = 150
+button_spacing = 120
 
 button_positions = {
-    'prev': (center_x - button_spacing * 1.5, button_y),
-    'playpause': (center_x - button_spacing * 0.5, button_y),
-    'next': (center_x + button_spacing * 0.5, button_y),
-    'spotifysearch': (center_x + button_spacing * 1.5, button_y)
+    'prev': (center_x - button_spacing * 2, button_y),
+    'playpause': (center_x - button_spacing, button_y),
+    'next': (center_x, button_y),
+    'spotifysearch': (center_x + button_spacing, button_y),
+    'language': (center_x + button_spacing * 2, button_y)
 }
 
-button_radius = 50
+button_radius = 45
 
 last_finger_action_time = 0
 finger_action_cooldown = 1.0
@@ -99,9 +101,11 @@ def media_play_pause():
     ctypes.windll.user32.keybd_event(0xB3, 0, 2, 0)
 
 def listen_and_play_spotify():
+    global current_language
     recognizer = sr.Recognizer()
     with sr.Microphone() as source:
-        print("🎤 Dinleniyor... Şarkı adını söyle (5 saniye):")
+        lang_name = "Türkçe" if current_language == "tr-TR" else "English"
+        print(f"🎙️ Dinleniyor ({lang_name})... Şarkı adını söyle (5 saniye):")
         try:
             audio = recognizer.listen(source, timeout=5, phrase_time_limit=5)
         except sr.WaitTimeoutError:
@@ -109,13 +113,33 @@ def listen_and_play_spotify():
             return
 
     try:
-        song = recognizer.recognize_google(audio, language="tr-TR")
+        song = recognizer.recognize_google(audio, language=current_language)
         print(f"🎶 Algılanan şarkı: {song}")
         results = sp.search(q=song, limit=1, type='track')
         if results['tracks']['items']:
             uri = results['tracks']['items'][0]['uri']
-            sp.start_playback(uris=[uri])
-            print(f"🎧 Spotify'da çalınıyor: {song}")
+            
+            try:
+                devices = sp.devices()
+                if not devices or not devices.get('devices'):
+                    print("⚠️ Spotify cihazı bulunamadı!")
+                    print("💡 Lütfen bilgisayarınızda veya telefonunuzda Spotify'ı açın ve bir şarkı çalın.")
+                    return
+                
+                active_device = None
+                for device in devices['devices']:
+                    if device['is_active']:
+                        active_device = device['id']
+                        break
+                
+                if not active_device and devices['devices']:
+                    active_device = devices['devices'][0]['id']
+                
+                sp.start_playback(device_id=active_device, uris=[uri])
+                print(f"🎧 Spotify'da çalınıyor: {song}")
+            except Exception as playback_error:
+                print(f"⚠️ Spotify oynatma hatası: {playback_error}")
+                print("💡 Spotify uygulamasını açın ve bir şarkı başlatın, sonra tekrar deneyin.")
         else:
             print("❌ Şarkı bulunamadı.")
     except sr.UnknownValueError:
@@ -212,7 +236,7 @@ def handle_gesture(gesture_type):
     last_gesture_time = now
 
 def handle_button_action(button_key):
-    global last_finger_action_time
+    global last_finger_action_time, current_language
     now = time.time()
     
     if now - last_finger_action_time < finger_action_cooldown:
@@ -234,6 +258,14 @@ def handle_button_action(button_key):
     elif button_key == 'spotifysearch':
         listen_and_play_spotify()
         action = "🎵 Spotify Sesli Arama"
+        last_finger_action_time = now
+    elif button_key == 'language':
+        if current_language == "tr-TR":
+            current_language = "en-US"
+            action = "🇬🇧 Dil: English"
+        else:
+            current_language = "tr-TR"
+            action = "🇹🇷 Dil: Türkçe"
         last_finger_action_time = now
     
     if action:
@@ -406,10 +438,7 @@ while True:
             one_hand_counter = 0
     
     if not two_hands_mode:
-        for key in ['prev', 'playpause', 'next', 'spotifysearch']:
-            if key not in icons:
-                continue
-            
+        for key in ['prev', 'playpause', 'next', 'spotifysearch', 'language']:
             pos = button_positions[key]
             is_active = (current_button == key) if 'current_button' in locals() else False
             
@@ -418,8 +447,13 @@ while True:
             cv2.circle(img_display, (int(pos[0]), int(pos[1])), button_radius, button_color, -1)
             cv2.circle(img_display, (int(pos[0]), int(pos[1])), button_radius, (255, 255, 255), 3)
             
-            scale = 1.2 if is_active else 1.0
-            overlay_icon(img_display, icons[key], pos, scale)
+            if key == 'language':
+                lang_text = "TR" if current_language == "tr-TR" else "EN"
+                cv2.putText(img_display, lang_text, (int(pos[0]) - 20, int(pos[1]) + 10), 
+                           cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+            elif key in icons:
+                scale = 1.2 if is_active else 1.0
+                overlay_icon(img_display, icons[key], pos, scale)
     
     cv2.putText(img_display, "EL HAREKET KONTROL", (cam_w//2 - 220, 50), 
                 cv2.FONT_HERSHEY_SIMPLEX, 1.2, (255, 255, 255), 3)
@@ -429,8 +463,9 @@ while True:
             "IKI EL MODU: Elleri yaklastir/uzaklastir = SES KONTROLU"
         ]
     else:
+        lang_name = "TR" if current_language == "tr-TR" else "EN"
         instructions = [
-            "MEDYA: Acik elle (3+ parmak) butonlara dokun",
+            f"MEDYA: Acik elle (3+ parmak) butonlara dokun | Dil: {lang_name}",
             "SES: Iki elinizi goster ve yaklastir/uzaklastir"
         ]
     
