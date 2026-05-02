@@ -2,17 +2,17 @@
 
 This project is a gesture-based media control panel using your webcam and hand tracking. It also includes voice command integration with Spotify. You can control volume, media playback, and even search and play a song on Spotify using your voice.
 
-## 🚀 Features
+##  Features
 
-- 🔊 Volume up / down using hand gestures  
-- ⏯️ Play / pause / next / previous track  
-- 🗣️ Voice-controlled song search and playback via Spotify  
-- 🎙️ Mute and unmute microphone  
-- 🖼️ Visual interface with intuitive icons  
-- 🧠 Uses real-time hand tracking with MediaPipe  
-- ⚙️ Sends native media key events to your system (Windows)
+-  Volume up / down using hand gestures  
+-  Play / pause / next / previous track  
+-  Voice-controlled song search and playback via Spotify  
+-  Mute and unmute microphone  
+-  Visual interface with intuitive icons  
+-  Uses real-time hand tracking with MediaPipe  
+-  Sends native media key events to your system (Windows)
 
-## 🧪 Technologies Used
+##  Technologies Used
 
 - Python 3
 - OpenCV
@@ -24,7 +24,7 @@ This project is a gesture-based media control panel using your webcam and hand t
 - dotenv (for managing secrets)
 - comtypes (for Windows COM interaction)
 
-## 📦 Requirements
+##  Requirements
 
 Install the dependencies using the following command:
 
